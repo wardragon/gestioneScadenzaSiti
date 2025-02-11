@@ -1,0 +1,10 @@
+pdo_mysql
+session
+filter
+json
+mbstring
+
+# Composer Packages:
+phpmailer/phpmailer: ^6.8
+league/plates: ^4.0
+

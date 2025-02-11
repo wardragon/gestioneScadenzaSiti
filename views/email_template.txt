@@ -1,0 +1,5 @@
+CyberSecurity Sapienza - Security Notice
+
+Service: {{ service }}
+
+This is a security notice for the service {{ service }}.
