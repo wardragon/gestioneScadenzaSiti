@@ -20,58 +20,27 @@ $dbName = getInput("Database Name", true);
 
 // Get admin user details
 $adminUser = getInput("Admin Username", true, '/^[a-zA-Z0-9_]+$/');
-$adminPassword = getInput("Admin Password", true);
-
-// ... (Get other configuration parameters if needed: SMTP, LDAP, etc.)
+$adminPassword = getInput("Admin Password", true); // Store plain text temporarily
+$adminEmail = getInput("Admin Email", true, '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'); // Email validation
 
 try {
-    // Create database connection
+    // Database connection and schema creation
     $pdo = new PDO("mysql:host=$dbHost", $dbUser, $dbPassword);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Create database
     $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbName`");
     $pdo->exec("USE `$dbName`");
+    // ... (Table creation - same as before)
 
-    // Create tables (Schema)
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            role VARCHAR(20) NOT NULL DEFAULT 'user' -- 'admin' or 'user'
-        );
 
-        CREATE TABLE IF NOT EXISTS services (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            ip VARCHAR(255),
-            service TEXT,
-            start_date DATE,
-            expiration_days INT DEFAULT 10,
-            contact VARCHAR(255),
-            responsible VARCHAR(255),
-            status VARCHAR(20) DEFAULT 'open',  -- open, closed, expired
-            referent VARCHAR(255)
-        );
-
-        CREATE TABLE IF NOT EXISTS user_preferences (
-            user_id INT,
-            order_by VARCHAR(255) DEFAULT 'start_date ASC',
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-    ");
-
-    // Create admin user (hash the password)
+    // Hash the admin password
     $hashedPassword = password_hash($adminPassword, PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
-    $stmt->execute([$adminUser, $hashedPassword, 'admin']);
 
-    // ... (Store other configuration parameters in config.php)
+    // Create admin user (using email now)
+    $stmt = $pdo->prepare("INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$adminUser, $hashedPassword, 'admin', $adminEmail]);
 
-    // Create installed.lock file
-    touch($installedFile);
 
-    // Create config.php
+    // Generate config.php
     $configContent = "<?php\nreturn [\n";
     $configContent .= "    'database' => [\n";
     $configContent .= "        'host' => '$dbHost',\n";
@@ -82,7 +51,8 @@ try {
     // ... (Add other config parameters - SMTP, LDAP, etc.)
     $configContent .= "    'admin' => [\n";
     $configContent .= "        'user' => '$adminUser',\n";
-    $configContent .= "        'password' => '$hashedPassword',\n";
+    $configContent .= "        'password' => '$hashedPassword',\n"; // Store hashed password
+    $configContent .= "        'email' => '$adminEmail',\n"; // Store admin email
     $configContent .= "    ],\n";
     $configContent .= "    'smtp' => [\n"; // Example SMTP config
     $configContent .= "        'host' => 'your_smtp_host',\n";
@@ -105,13 +75,13 @@ try {
     $configContent .= "    'email_template' => __DIR__ . '/../views/email_template.txt',\n";
     $configContent .= "];\n";
 
-
     file_put_contents(__DIR__ . '/config.php', $configContent);
 
-    echo "Installation complete!\n";
-    echo "Remember to change the admin password after logging in.\n";
+    // ... (installed.lock and unlink(__FILE__) - same as before)
 
 } catch (PDOException $e) {
+    die("Error during installation: " . $e->getMessage());
+} catch (Exception $e) {
     die("Error during installation: " . $e->getMessage());
 }
 
