@@ -30,6 +30,7 @@ $config = include $configPath;
 $db = new PDO("mysql:host={$config['database']['host']};dbname={$config['database']['name']}", $config['database']['user'], $config['database']['password']);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$templates = new League\Plates\Engine(); // Create the engine instance FIRST
 $templates = new League\Plates\Engine(__DIR__ . '/views');
 
 $auth = new App\Auth\Auth($db, $config);
